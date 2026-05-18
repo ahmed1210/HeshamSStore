@@ -13,7 +13,7 @@ const userRoutes = require("./routes/userRoutes");
 const deliveryRoutes = require("./routes/deliveryRoutes");
 const paymobRoutes = require("./routes/paymobRoutes");
 const discountRoutes = require("./routes/discountRoutes");
-
+const adminUserRoutes = require("./routes/adminUserRoutes");
 const app = express();
 
 app.use(
@@ -71,6 +71,7 @@ app.get("/api/env-test", (req, res) => {
 });
 
 // API routes
+app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
@@ -80,7 +81,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/paymob", paymobRoutes);
 app.use("/api/discounts", discountRoutes);
-
+app.use("/api/admin/discounts", discountRoutes);
 // 404 route
 app.use((req, res) => {
   res.status(404).json({

@@ -1,4 +1,5 @@
 "use client";
+
 import { apiUrl } from "@/lib/api";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -17,8 +18,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { getCart, saveCart } from "@/utils/cartStorage";
-
-
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -45,13 +44,10 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    const savedCart = getCart();
-    setCart(savedCart);
+    setCart(getCart());
     loadDeliveryPlaces();
 
-    const update = () => {
-      setCart(getCart());
-    };
+    const update = () => setCart(getCart());
 
     window.addEventListener("cartUpdated", update);
     window.addEventListener("storage", update);
@@ -66,7 +62,7 @@ export default function CheckoutPage() {
     try {
       setLoadingDelivery(true);
 
-     const res = await fetch(apiUrl("/api/delivery/places"));
+      const res = await fetch(apiUrl("/api/delivery/places"));
       const data = await res.json();
 
       if (!res.ok) {
@@ -101,13 +97,13 @@ export default function CheckoutPage() {
 
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => {
-      return sum + Number(item.price || 0) * Number(item.quantity || 1);
+      return sum + Number(item.price || 0) * Number(item.quantity || item.cartQuantity || 1);
     }, 0);
   }, [cart]);
 
   const totalItems = useMemo(() => {
     return cart.reduce((sum, item) => {
-      return sum + Number(item.quantity || 1);
+      return sum + Number(item.quantity || item.cartQuantity || 1);
     }, 0);
   }, [cart]);
 
@@ -116,9 +112,7 @@ export default function CheckoutPage() {
   const discountAmount = useMemo(() => {
     if (!appliedDiscount) return 0;
 
-    if (appliedDiscount.type === "free_delivery") {
-      return deliveryPrice;
-    }
+    if (appliedDiscount.type === "free_delivery") return deliveryPrice;
 
     if (appliedDiscount.type === "percentage") {
       return Math.round((subtotal * Number(appliedDiscount.value || 0)) / 100);
@@ -139,20 +133,17 @@ export default function CheckoutPage() {
 
     setTimeout(() => {
       setMessage("");
-    }, 5000);
+    }, 6000);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (name === "phone") {
-      const cleaned = value.replace(/[^\d+]/g, "");
-
       setForm((prev) => ({
         ...prev,
-        phone: cleaned,
+        phone: value.replace(/[^\d+]/g, ""),
       }));
-
       return;
     }
 
@@ -165,17 +156,9 @@ export default function CheckoutPage() {
   const normalizePhone = (phone) => {
     const cleanPhone = String(phone || "").trim();
 
-    if (cleanPhone.startsWith("+20")) {
-      return cleanPhone;
-    }
-
-    if (cleanPhone.startsWith("20")) {
-      return `+${cleanPhone}`;
-    }
-
-    if (cleanPhone.startsWith("0")) {
-      return `+20${cleanPhone.slice(1)}`;
-    }
+    if (cleanPhone.startsWith("+20")) return cleanPhone;
+    if (cleanPhone.startsWith("20")) return `+${cleanPhone}`;
+    if (cleanPhone.startsWith("0")) return `+20${cleanPhone.slice(1)}`;
 
     return cleanPhone;
   };
@@ -216,11 +199,6 @@ export default function CheckoutPage() {
       return false;
     }
 
-    if (!["cash", "visa", "wallet"].includes(form.paymentMethod)) {
-      showMessage("Please select a payment method.");
-      return false;
-    }
-
     return true;
   };
 
@@ -254,7 +232,7 @@ export default function CheckoutPage() {
       }
 
       throw new Error(data.message || "Invalid discount code");
-    } catch (error) {
+    } catch {
       const fallbackCodes = {
         HESHAM10: {
           code: "HESHAM10",
@@ -294,21 +272,63 @@ export default function CheckoutPage() {
 
   const buildOrderItems = () => {
     return cart.map((item) => {
-      const quantity = Number(item.quantity || item.cartQuantity || 1);
+      const quantity = Number(item.quantity || item.cartQuantity || item.qty || 1);
+
+      const productId =
+        item.productId ||
+        item.product_id ||
+        item.id ||
+        item._id;
+
+      const selectedSize =
+        item.selectedSize ||
+        item.selected_size ||
+        item.size ||
+        "";
 
       return {
-        id: item.productId || item.id,
-        productId: item.productId || item.id,
+        id: productId,
+        productId,
+        product_id: productId,
         name: item.name || item.productName || "Product",
         productName: item.productName || item.name || "Product",
         image: item.image || item.imageUrl || "",
-        size: item.size || item.selectedSize || "",
-        selectedSize: item.selectedSize || item.size || "",
+        size: selectedSize,
+        selectedSize,
+        selected_size: selectedSize,
         price: Number(item.price || 0),
         quantity,
         cartQuantity: quantity,
+        qty: quantity,
       };
     });
+  };
+
+  const readResponseSafely = async (res) => {
+    const rawText = await res.text();
+
+    let data = {};
+
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      data = {
+        message: rawText || "Server returned an invalid response",
+      };
+    }
+
+    return { rawText, data };
+  };
+
+  const clearCartAfterOrder = () => {
+    saveCart([]);
+    setCart([]);
+
+    localStorage.removeItem("cart");
+    localStorage.removeItem("heshamCart");
+    localStorage.removeItem("cartItems");
+
+    window.dispatchEvent(new Event("cartUpdated"));
   };
 
   const handleSubmit = async (e) => {
@@ -321,6 +341,19 @@ export default function CheckoutPage() {
       setSubmitting(true);
 
       const customerPhone = normalizePhone(form.phone);
+      const orderItems = buildOrderItems();
+
+      const invalidItem = orderItems.find(
+        (item) => !item.productId || !item.selectedSize || !item.quantity
+      );
+
+      if (invalidItem) {
+        console.log("INVALID ORDER ITEM:", invalidItem);
+        showMessage(
+          "Some cart items are missing product ID, size, or quantity. Please remove and add them again."
+        );
+        return;
+      }
 
       const orderPayload = {
         customer: {
@@ -333,11 +366,17 @@ export default function CheckoutPage() {
           notes: form.notes.trim(),
         },
 
-        items: buildOrderItems(),
+        customerName: form.fullName.trim(),
+        customerEmail: form.email.trim(),
+        customerPhone,
+        customerAddress: form.address.trim(),
 
+        city: selectedDeliveryPlace?.name || "",
         deliveryPlaceId: selectedDeliveryPlace?.id || "",
         deliveryPlace: selectedDeliveryPlace?.name || "",
         deliveryPrice,
+
+        items: orderItems,
 
         discountCode: appliedDiscount?.code || "",
         discountType: appliedDiscount?.type || "",
@@ -345,17 +384,21 @@ export default function CheckoutPage() {
         discountAmount,
 
         paymentMethod: form.paymentMethod,
-        paymentStatus: form.paymentMethod === "cash" ? "pending" : "pending",
+        paymentStatus: "pending",
 
         subtotal,
         shipping: deliveryPrice,
         total,
         totalPrice: total,
 
-        orderStatus: "new",
+        orderStatus: "pending",
         status: "pending",
+        notes: form.notes.trim(),
         createdAt: new Date().toISOString(),
       };
+
+      console.log("ORDER ITEMS:", orderItems);
+      console.log("ORDER PAYLOAD:", orderPayload);
 
       const res = await fetch(apiUrl("/api/orders"), {
         method: "POST",
@@ -365,20 +408,27 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderPayload),
       });
 
-      const data = await res.json();
+      const { rawText, data } = await readResponseSafely(res);
 
-console.log("ORDER RESPONSE STATUS:", res.status);
-console.log("ORDER RESPONSE DATA:", data);
+      console.log("ORDER RESPONSE STATUS:", res.status);
+      console.log("ORDER RAW RESPONSE:", rawText);
+      console.log("ORDER RESPONSE DATA:", data);
 
-if (!res.ok) {
-  throw new Error(data.message || "Failed to create order");
-}
+      if (!res.ok) {
+        console.log("BACKEND ERROR DATA:", data);
+        console.log("BACKEND RAW ERROR:", rawText);
 
-      localStorage.setItem("lastOrder", JSON.stringify(data.order));
+        throw new Error(
+          data.message ||
+            data.error ||
+            rawText ||
+            `Failed to create order. Status: ${res.status}`
+        );
+      }
 
-      saveCart([]);
-      setCart([]);
-      window.dispatchEvent(new Event("cartUpdated"));
+      localStorage.setItem("lastOrder", JSON.stringify(data.order || data));
+
+      clearCartAfterOrder();
 
       router.push("/checkout/success");
     } catch (error) {
@@ -393,7 +443,8 @@ if (!res.ok) {
         errorText.includes("not available")
       ) {
         showMessage(
-          "Some items in your cart are no longer available in the selected size. Please update your cart and try again."
+          error.message ||
+            "Some items in your cart are no longer available in the selected size."
         );
         return;
       }
@@ -409,9 +460,7 @@ if (!res.ok) {
         return;
       }
 
-      showMessage(
-        "We could not complete your order right now. Please check your information and try again."
-      );
+      showMessage(error.message || "Failed to create order");
     } finally {
       setSubmitting(false);
     }
@@ -498,7 +547,10 @@ if (!res.ok) {
             </Link>
           </section>
         ) : (
-          <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_390px]">
+          <form
+            onSubmit={handleSubmit}
+            className="grid gap-8 lg:grid-cols-[1fr_390px]"
+          >
             <section className="space-y-6">
               <div className="rounded-[2.5rem] border border-yellow-400/25 bg-black/45 p-6 shadow-2xl shadow-black/20 backdrop-blur-xl light:bg-white">
                 <div className="mb-5 flex items-center gap-2 text-yellow-400">
@@ -510,56 +562,63 @@ if (!res.ok) {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="fullName" className="theme-muted mb-2 block text-sm font-bold">
                       Full Name
                     </label>
                     <input
+                      id="fullName"
                       name="fullName"
                       value={form.fullName}
                       onChange={handleChange}
                       className="theme-input w-full rounded-2xl px-4 py-3 outline-none"
                       placeholder="Ahmed Mohamed"
+                      autoComplete="name"
                     />
                   </div>
 
                   <div>
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="email" className="theme-muted mb-2 block text-sm font-bold">
                       Email
                     </label>
                     <input
+                      id="email"
                       name="email"
                       value={form.email}
                       onChange={handleChange}
                       className="theme-input w-full rounded-2xl px-4 py-3 outline-none"
                       placeholder="example@email.com"
+                      autoComplete="email"
                     />
                   </div>
 
                   <div>
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="phone" className="theme-muted mb-2 block text-sm font-bold">
                       Phone
                     </label>
                     <div className="theme-input flex items-center gap-2 rounded-2xl px-4">
                       <Phone size={17} className="text-yellow-400" />
                       <input
+                        id="phone"
                         name="phone"
                         value={form.phone}
                         onChange={handleChange}
                         className="theme-text w-full bg-transparent py-3 outline-none"
                         placeholder="01000000000"
                         inputMode="tel"
+                        autoComplete="tel"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="deliveryPlaceId" className="theme-muted mb-2 block text-sm font-bold">
                       Delivery Area
                     </label>
 
                     <div className="theme-input flex items-center gap-2 rounded-2xl px-4">
                       <MapPin size={17} className="text-yellow-400" />
                       <select
+                        id="deliveryPlaceId"
                         name="deliveryPlaceId"
                         value={form.deliveryPlaceId}
                         onChange={handleChange}
@@ -581,23 +640,26 @@ if (!res.ok) {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="address" className="theme-muted mb-2 block text-sm font-bold">
                       Full Address
                     </label>
                     <textarea
+                      id="address"
                       name="address"
                       value={form.address}
                       onChange={handleChange}
                       className="theme-input min-h-[110px] w-full resize-y rounded-2xl px-4 py-3 outline-none"
                       placeholder="Street, building number, floor, apartment..."
+                      autoComplete="street-address"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="theme-muted mb-2 block text-sm font-bold">
+                    <label htmlFor="notes" className="theme-muted mb-2 block text-sm font-bold">
                       Notes Optional
                     </label>
                     <input
+                      id="notes"
                       name="notes"
                       value={form.notes}
                       onChange={handleChange}
@@ -664,6 +726,8 @@ if (!res.ok) {
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <input
+                    id="discountCode"
+                    name="discountCode"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     className="theme-input flex-1 rounded-full px-5 py-4 font-bold uppercase outline-none"

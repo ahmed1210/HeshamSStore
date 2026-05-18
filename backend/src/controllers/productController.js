@@ -1,89 +1,4 @@
-let products = [
-  {
-    id: 1,
-    name: "Black Runner Sneakers",
-    category: "men",
-    brand: "Hesham Brand",
-    price: 1499,
-    oldPrice: 1899,
-    quantity: 15,
-    rating: 4.8,
-    images: [
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200",
-    ],
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200",
-    sizes: ["40", "41", "42", "43", "44"],
-    sizeStock: {
-      40: 3,
-      41: 5,
-      42: 4,
-      43: 2,
-      44: 1,
-    },
-    tags: ["best-sale", "featured"],
-    description: "Modern black running sneakers for daily comfort.",
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: "Yellow Street Sneakers",
-    category: "women",
-    brand: "Urban Step",
-    price: 1299,
-    oldPrice: 1599,
-    quantity: 10,
-    rating: 4.6,
-    images: [
-      "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200",
-    ],
-    image:
-      "https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200",
-    sizes: ["36", "37", "38", "39", "40"],
-    sizeStock: {
-      36: 2,
-      37: 2,
-      38: 3,
-      39: 2,
-      40: 1,
-    },
-    tags: ["sale", "new-arrival"],
-    description: "Stylish yellow sneakers with a bold streetwear look.",
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    name: "Kids Sport Shoes",
-    category: "kids",
-    brand: "Mini Step",
-    price: 899,
-    oldPrice: 1099,
-    quantity: 20,
-    rating: 4.7,
-    images: [
-      "https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?q=80&w=1200",
-    ],
-    image:
-      "https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?q=80&w=1200",
-    sizes: ["28", "29", "30", "31", "32"],
-    sizeStock: {
-      28: 4,
-      29: 4,
-      30: 4,
-      31: 4,
-      32: 4,
-    },
-    tags: ["trending"],
-    description: "Comfortable sport shoes for active kids.",
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+const supabase = require("../config/supabase");
 
 const normalizeArray = (value) => {
   if (!value) return [];
@@ -104,6 +19,13 @@ const normalizeTags = (value) => {
   );
 };
 
+const calculateTotalStock = (sizeStock = {}) => {
+  return Object.values(sizeStock).reduce(
+    (sum, qty) => sum + Number(qty || 0),
+    0
+  );
+};
+
 const createSizeStockFromSizes = (sizes, existingSizeStock = {}) => {
   const stock = {};
 
@@ -114,50 +36,68 @@ const createSizeStockFromSizes = (sizes, existingSizeStock = {}) => {
   return stock;
 };
 
-const calculateTotalStock = (sizeStock = {}) => {
-  return Object.values(sizeStock).reduce(
-    (sum, qty) => sum + Number(qty || 0),
-    0
-  );
+const mapProductFromDb = (product) => {
+  if (!product) return null;
+
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.category || "",
+    brand: product.brand || "",
+    price: Number(product.price || 0),
+    oldPrice: Number(product.old_price || 0),
+    quantity: Number(product.quantity || 0),
+    rating: Number(product.rating || 5),
+    images: Array.isArray(product.images) ? product.images : [],
+    image: product.image || "",
+    sizes: Array.isArray(product.sizes) ? product.sizes : [],
+    sizeStock:
+      product.size_stock && typeof product.size_stock === "object"
+        ? product.size_stock
+        : {},
+    tags: Array.isArray(product.tags) ? product.tags : [],
+    description: product.description || "",
+    isActive: product.is_active !== false,
+    createdAt: product.created_at,
+    updatedAt: product.updated_at,
+  };
 };
 
-const normalizeSizeStock = (body, sizes, existingProduct = {}) => {
+const normalizeProductToDb = (body, existingProduct = {}) => {
+  const existingSizes = existingProduct.sizes || [];
+  const existingSizeStock = existingProduct.sizeStock || {};
+
+  const sizes = normalizeArray(body.sizes ?? existingSizes);
+
+  let rawSizeStock = {};
+
   if (body.sizeStock && typeof body.sizeStock === "object") {
-    return createSizeStockFromSizes(sizes, body.sizeStock);
-  }
-
-  if (typeof body.sizeStock === "string") {
+    rawSizeStock = body.sizeStock;
+  } else if (typeof body.sizeStock === "string") {
     try {
-      const parsed = JSON.parse(body.sizeStock);
-      return createSizeStockFromSizes(sizes, parsed);
+      rawSizeStock = JSON.parse(body.sizeStock);
     } catch {
-      return createSizeStockFromSizes(sizes, existingProduct.sizeStock || {});
+      rawSizeStock = existingSizeStock;
     }
+  } else if (body.size_stock && typeof body.size_stock === "object") {
+    rawSizeStock = body.size_stock;
+  } else {
+    rawSizeStock = existingSizeStock;
   }
 
-  if (existingProduct.sizeStock) {
-    return createSizeStockFromSizes(sizes, existingProduct.sizeStock);
+  let sizeStock = createSizeStockFromSizes(sizes, rawSizeStock);
+
+  if (sizes.length > 0 && Object.keys(sizeStock).length === 0) {
+    sizeStock = createSizeStockFromSizes(sizes, {});
   }
 
-  const equalStock = {};
-  const totalQuantity = Number(body.quantity || existingProduct.quantity || 0);
-  const perSize = sizes.length ? Math.floor(totalQuantity / sizes.length) : 0;
-  const remainder = sizes.length ? totalQuantity % sizes.length : 0;
-
-  sizes.forEach((size, index) => {
-    equalStock[size] = perSize + (index < remainder ? 1 : 0);
-  });
-
-  return equalStock;
-};
-
-const normalizeProduct = (body, existingProduct = {}) => {
-  const sizes = normalizeArray(body.sizes ?? existingProduct.sizes);
-  const sizeStock = normalizeSizeStock(body, sizes, existingProduct);
-  const quantity = calculateTotalStock(sizeStock);
+  const quantity =
+    body.quantity !== undefined
+      ? Number(body.quantity || 0)
+      : calculateTotalStock(sizeStock);
 
   const images = normalizeArray(
-    body.images || body.image || existingProduct.images
+    body.images || body.image || existingProduct.images || []
   );
 
   const mainImage =
@@ -167,26 +107,26 @@ const normalizeProduct = (body, existingProduct = {}) => {
     "https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200";
 
   return {
-    ...existingProduct,
-    name: body.name ?? existingProduct.name,
-    category: body.category ?? existingProduct.category,
-    brand: body.brand ?? existingProduct.brand,
+    name: String(body.name ?? existingProduct.name ?? "").trim(),
+    category: String(body.category ?? existingProduct.category ?? "").trim(),
+    brand: String(body.brand ?? existingProduct.brand ?? "").trim(),
     price: Number(body.price ?? existingProduct.price ?? 0),
-    oldPrice: Number(body.oldPrice ?? existingProduct.oldPrice ?? 0),
+    old_price: Number(body.oldPrice ?? existingProduct.oldPrice ?? 0),
     quantity,
     rating: Number(body.rating ?? existingProduct.rating ?? 5),
     images,
     image: mainImage,
     sizes,
-    sizeStock,
-    tags: normalizeTags(body.tags ?? existingProduct.tags),
-    description: body.description ?? existingProduct.description ?? "",
-    isActive:
+    size_stock: sizeStock,
+    tags: normalizeTags(body.tags ?? existingProduct.tags ?? []),
+    description: String(
+      body.description ?? existingProduct.description ?? ""
+    ).trim(),
+    is_active:
       typeof body.isActive === "boolean"
         ? body.isActive
         : existingProduct.isActive ?? true,
-    createdAt: existingProduct.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 };
 
@@ -195,51 +135,75 @@ const normalizeProduct = (body, existingProduct = {}) => {
    GET /api/products
 ========================= */
 
-const getProducts = (req, res) => {
-  const { category, search, brand, tag } = req.query;
+const getProducts = async (req, res) => {
+  try {
+    const { category, search, brand, tag } = req.query;
 
-  let filteredProducts = products.filter((product) => product.isActive !== false);
+    let query = supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (category) {
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    let filteredProducts = Array.isArray(data)
+      ? data.map(mapProductFromDb)
+      : [];
+
     filteredProducts = filteredProducts.filter(
-      (product) =>
-        String(product.category || "").toLowerCase() ===
-        String(category).toLowerCase()
+      (product) => product.isActive !== false
     );
-  }
 
-  if (brand) {
-    filteredProducts = filteredProducts.filter(
-      (product) =>
-        String(product.brand || "").toLowerCase() ===
-        String(brand).toLowerCase()
-    );
-  }
+    if (category) {
+      filteredProducts = filteredProducts.filter(
+        (product) =>
+          String(product.category || "").toLowerCase() ===
+          String(category).toLowerCase()
+      );
+    }
 
-  if (tag) {
-    const requestedTag = String(tag).toLowerCase().replace(/\s+/g, "-");
+    if (brand) {
+      filteredProducts = filteredProducts.filter(
+        (product) =>
+          String(product.brand || "").toLowerCase() ===
+          String(brand).toLowerCase()
+      );
+    }
 
-    filteredProducts = filteredProducts.filter((product) =>
-      (product.tags || []).some(
-        (item) =>
-          String(item).toLowerCase().replace(/\s+/g, "-") === requestedTag
-      )
-    );
-  }
+    if (tag) {
+      const requestedTag = String(tag).toLowerCase().replace(/\s+/g, "-");
 
-  if (search) {
-    const searchText = String(search).toLowerCase();
+      filteredProducts = filteredProducts.filter((product) =>
+        (product.tags || []).some(
+          (item) =>
+            String(item).toLowerCase().replace(/\s+/g, "-") === requestedTag
+        )
+      );
+    }
 
-    filteredProducts = filteredProducts.filter((product) => {
-      const productText = `${product.name} ${product.brand} ${
-        product.category
-      } ${(product.tags || []).join(" ")}`.toLowerCase();
+    if (search) {
+      const searchText = String(search).toLowerCase();
 
-      return productText.includes(searchText);
+      filteredProducts = filteredProducts.filter((product) => {
+        const productText = `${product.name} ${product.brand} ${
+          product.category
+        } ${(product.tags || []).join(" ")}`.toLowerCase();
+
+        return productText.includes(searchText);
+      });
+    }
+
+    return res.json(filteredProducts);
+  } catch (error) {
+    console.error("Get products error:", error);
+
+    return res.status(500).json({
+      message: "Failed to load products",
+      error: error.message,
     });
   }
-
-  res.json(filteredProducts);
 };
 
 /* =========================
@@ -247,16 +211,31 @@ const getProducts = (req, res) => {
    GET /api/products/:id
 ========================= */
 
-const getProductById = (req, res) => {
-  const product = products.find((item) => item.id === Number(req.params.id));
+const getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  if (!product) {
-    return res.status(404).json({
-      message: "Product not found",
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    return res.json(mapProductFromDb(data));
+  } catch (error) {
+    console.error("Get product by id error:", error);
+
+    return res.status(500).json({
+      message: "Failed to load product",
+      error: error.message,
     });
   }
-
-  res.json(product);
 };
 
 /* =========================
@@ -264,26 +243,38 @@ const getProductById = (req, res) => {
    POST /api/products
 ========================= */
 
-const createProduct = (req, res) => {
-  const { name, category, price, sizes } = req.body;
+const createProduct = async (req, res) => {
+  try {
+    const { name, category, price, sizes } = req.body;
 
-  if (!name || !category || !price || !sizes) {
-    return res.status(400).json({
-      message: "Name, category, price, and sizes are required",
+    if (!name || !category || !price || !sizes) {
+      return res.status(400).json({
+        message: "Name, category, price, and sizes are required",
+      });
+    }
+
+    const payload = normalizeProductToDb(req.body);
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({
+      message: "Product created successfully",
+      product: mapProductFromDb(data),
+    });
+  } catch (error) {
+    console.error("Create product error:", error);
+
+    return res.status(500).json({
+      message: "Failed to create product",
+      error: error.message,
     });
   }
-
-  const newProduct = {
-    id: Date.now(),
-    ...normalizeProduct(req.body),
-  };
-
-  products.push(newProduct);
-
-  res.status(201).json({
-    message: "Product created successfully",
-    product: newProduct,
-  });
 };
 
 /* =========================
@@ -291,27 +282,42 @@ const createProduct = (req, res) => {
    PUT /api/products/:id
 ========================= */
 
-const updateProduct = (req, res) => {
-  const productId = Number(req.params.id);
-  const productIndex = products.findIndex((item) => item.id === productId);
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  if (productIndex === -1) {
-    return res.status(404).json({
-      message: "Product not found",
+    const existing = await getProductRawById(id);
+
+    if (!existing) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    const normalizedExisting = mapProductFromDb(existing);
+    const payload = normalizeProductToDb(req.body, normalizedExisting);
+
+    const { data, error } = await supabase
+      .from("products")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    return res.json({
+      message: "Product updated successfully",
+      product: mapProductFromDb(data),
+    });
+  } catch (error) {
+    console.error("Update product error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update product",
+      error: error.message,
     });
   }
-
-  const updatedProduct = {
-    id: productId,
-    ...normalizeProduct(req.body, products[productIndex]),
-  };
-
-  products[productIndex] = updatedProduct;
-
-  res.json({
-    message: "Product updated successfully",
-    product: updatedProduct,
-  });
 };
 
 /* =========================
@@ -319,33 +325,61 @@ const updateProduct = (req, res) => {
    DELETE /api/products/:id
 ========================= */
 
-const deleteProduct = (req, res) => {
-  const productId = Number(req.params.id);
-  const product = products.find((item) => item.id === productId);
+const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  if (!product) {
-    return res.status(404).json({
-      message: "Product not found",
+    const { error } = await supabase.from("products").delete().eq("id", id);
+
+    if (error) throw error;
+
+    return res.json({
+      message: "Product deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete product error:", error);
+
+    return res.status(500).json({
+      message: "Failed to delete product",
+      error: error.message,
     });
   }
-
-  products = products.filter((item) => item.id !== productId);
-
-  res.json({
-    message: "Product deleted successfully",
-  });
 };
 
 /* =========================
-   Internal helpers
+   Internal helpers for orders
 ========================= */
 
-const getProductsData = () => {
-  return products;
+const getProductRawById = async (id) => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  return data;
 };
 
-const checkProductSizeStock = (productId, selectedSize, quantityToCheck) => {
-  const product = products.find((item) => item.id === Number(productId));
+const getProductsData = async () => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return [];
+
+  return Array.isArray(data) ? data.map(mapProductFromDb) : [];
+};
+
+const checkProductSizeStock = async (
+  productId,
+  selectedSize,
+  quantityToCheck
+) => {
+  const rawProduct = await getProductRawById(productId);
+  const product = mapProductFromDb(rawProduct);
 
   if (!product) {
     return {
@@ -399,8 +433,12 @@ const checkProductSizeStock = (productId, selectedSize, quantityToCheck) => {
   };
 };
 
-const reduceProductSizeStock = (productId, selectedSize, quantityToReduce) => {
-  const checkResult = checkProductSizeStock(
+const reduceProductSizeStock = async (
+  productId,
+  selectedSize,
+  quantityToReduce
+) => {
+  const checkResult = await checkProductSizeStock(
     productId,
     selectedSize,
     quantityToReduce
@@ -415,21 +453,44 @@ const reduceProductSizeStock = (productId, selectedSize, quantityToReduce) => {
   const reduceBy = Number(quantityToReduce || 0);
   const currentStock = Number(product.sizeStock[size] || 0);
 
-  product.sizeStock[size] = currentStock - reduceBy;
-  product.quantity = calculateTotalStock(product.sizeStock);
-  product.updatedAt = new Date().toISOString();
+  const updatedSizeStock = {
+    ...product.sizeStock,
+    [size]: currentStock - reduceBy,
+  };
 
-  if (product.quantity === 0) {
-    product.tags = [...new Set([...(product.tags || []), "out-of-stock"])];
+  const updatedQuantity = calculateTotalStock(updatedSizeStock);
+
+  let updatedTags = Array.isArray(product.tags) ? [...product.tags] : [];
+
+  if (updatedQuantity === 0) {
+    updatedTags = [...new Set([...updatedTags, "out-of-stock"])];
   } else {
-    product.tags = (product.tags || []).filter(
-      (tag) => tag !== "out-of-stock"
-    );
+    updatedTags = updatedTags.filter((tag) => tag !== "out-of-stock");
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .update({
+      size_stock: updatedSizeStock,
+      quantity: updatedQuantity,
+      tags: updatedTags,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", productId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return {
+      ok: false,
+      status: 500,
+      message: error.message,
+    };
   }
 
   return {
     ok: true,
-    product,
+    product: mapProductFromDb(data),
   };
 };
 
