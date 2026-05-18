@@ -1,0 +1,28 @@
+{
+  "name": "hesham-store-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Hesham Store",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "keywords": [],
+  "author": "Hesham Store",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "axios": "^1.16.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.3",
+    "framer-motion": "^12.38.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.14.0",
+    "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
