@@ -101,7 +101,7 @@ export default function HomePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[var(--page-bg)] text-[var(--text-main)]">
+    <main className="min-h-screen bg-(--page-bg) text-(--text-main)">
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
           <img
@@ -110,10 +110,10 @@ export default function HomePage() {
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-black via-black/70 to-transparent" />
         </div>
 
-        <div className="container relative z-10 flex min-h-[620px] items-center py-20">
+        <div className="container relative z-10 flex min-h-155 items-center py-20">
           <div className="max-w-3xl">
             <p className="mb-5 inline-flex rounded-full border border-yellow-400/50 bg-yellow-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.25em] text-yellow-400">
               New season drops
@@ -181,14 +181,14 @@ export default function HomePage() {
             <Link
               key={category.title}
               href={category.href}
-              className="group relative min-h-[340px] overflow-hidden rounded-[2rem] border border-yellow-400/20 bg-black"
+              className="group relative min-h-85 overflow-hidden rounded-4xl border border-yellow-400/20 bg-black"
             >
               <img
                 src={category.image}
                 alt={category.title}
                 className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black via-black/45 to-transparent" />
 
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <h3 className="text-3xl font-black uppercase text-white">
@@ -297,7 +297,7 @@ function ProductSection({ title, eyebrow, href, products, loading }) {
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
-              className="h-[460px] animate-pulse rounded-[2rem] border border-yellow-400/15 bg-white/5"
+              className="h-115 animate-pulse rounded-4xl border border-yellow-400/15 bg-white/5"
             />
           ))}
         </div>
@@ -308,7 +308,7 @@ function ProductSection({ title, eyebrow, href, products, loading }) {
           ))}
         </div>
       ) : (
-        <div className="rounded-[2rem] border border-yellow-400/20 bg-black/20 p-10 text-center theme-muted">
+        <div className="rounded-4xl border border-yellow-400/20 bg-black/20 p-10 text-center theme-muted">
           No products found in this section.
         </div>
       )}

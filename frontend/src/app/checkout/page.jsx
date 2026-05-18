@@ -488,7 +488,7 @@ export default function CheckoutPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[var(--page-bg)] py-20 text-[var(--text-main)]">
+    <main className="min-h-screen bg-(--page-bg) py-20 text-(--text-main)">
       <div className="container">
         <div className="mb-8">
           <Link
@@ -648,7 +648,7 @@ export default function CheckoutPage() {
                       name="address"
                       value={form.address}
                       onChange={handleChange}
-                      className="theme-input min-h-[110px] w-full resize-y rounded-2xl px-4 py-3 outline-none"
+                      className="theme-input min-h-27.5 w-full resize-y rounded-2xl px-4 py-3 outline-none"
                       placeholder="Street, building number, floor, apartment..."
                       autoComplete="street-address"
                     />
@@ -693,10 +693,10 @@ export default function CheckoutPage() {
                             paymentMethod: method.id,
                           }))
                         }
-                        className={`rounded-[1.5rem] border p-4 text-left transition ${
+                        className={`rounded-3xl border p-4 text-left transition ${
                           active
                             ? "border-yellow-400 bg-yellow-400 text-black"
-                            : "border-white/15 bg-black/20 text-[var(--text-main)] hover:border-yellow-400 light:border-zinc-200 light:bg-zinc-50"
+                            : "border-white/15 bg-black/20 text-(--text-main) hover:border-yellow-400 light:border-zinc-200 light:bg-zinc-50"
                         }`}
                       >
                         <Icon size={24} />

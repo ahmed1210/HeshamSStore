@@ -190,7 +190,7 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="admin-dashboard-page min-h-screen bg-[#020617] p-6 text-white md:p-8">
-      <section className="mb-8 overflow-hidden rounded-[2rem] border border-yellow-400/20 bg-[#111827] p-6 shadow-2xl shadow-black/30 md:p-8">
+      <section className="mb-8 overflow-hidden rounded-4xl border border-yellow-400/20 bg-[#111827] p-6 shadow-2xl shadow-black/30 md:p-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-yellow-400">
@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
       </section>
 
       {visibleCards.length === 0 ? (
-        <section className="rounded-[2rem] border border-yellow-400/20 bg-[#111827] p-8 text-center">
+        <section className="rounded-4xl border border-yellow-400/20 bg-[#111827] p-8 text-center">
           <ShoppingBag className="mx-auto text-yellow-400" size={44} />
 
           <h2 className="mt-4 text-2xl font-black uppercase text-white">
@@ -277,7 +277,7 @@ export default function AdminDashboardPage() {
                     {card.title}
                   </h2>
 
-                  <p className="mt-3 min-h-[52px] text-sm font-semibold leading-6 text-zinc-400">
+                  <p className="mt-3 min-h-13 text-sm font-semibold leading-6 text-zinc-400">
                     {card.description}
                   </p>
 
@@ -291,7 +291,7 @@ export default function AdminDashboardPage() {
         </section>
       )}
 
-      <section className="mt-8 rounded-[2rem] border border-yellow-400/20 bg-[#111827] p-6">
+      <section className="mt-8 rounded-4xl border border-yellow-400/20 bg-[#111827] p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-400">

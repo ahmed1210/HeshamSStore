@@ -785,7 +785,7 @@ export default function AdminUsersPage() {
           ) : (
             <>
               <div className="users-desktop-table overflow-x-auto">
-                <table className="w-full min-w-[980px] text-left">
+                <table className="w-full min-w-245 text-left">
                   <thead>
                     <tr className="border-b border-yellow-400/20 text-yellow-400">
                       <th className="p-4 text-sm font-black uppercase">User</th>
