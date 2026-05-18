@@ -18,6 +18,7 @@ const getProductImage = (product) => {
 
   if (!rawImage) return "";
 
+  // Old local backend upload URLs
   if (rawImage.startsWith("http://localhost:5000")) {
     return rawImage.replace("http://localhost:5000", getApiBaseUrl());
   }
@@ -26,6 +27,7 @@ const getProductImage = (product) => {
     return rawImage.replace("https://localhost:5000", getApiBaseUrl());
   }
 
+  // Old relative backend upload paths
   if (rawImage.startsWith("/uploads")) {
     return `${getApiBaseUrl()}${rawImage}`;
   }
@@ -34,14 +36,42 @@ const getProductImage = (product) => {
     return `${getApiBaseUrl()}/${rawImage}`;
   }
 
+  // New Supabase Storage public URLs
   return rawImage;
+};
+
+const getTotalStock = (product) => {
+  if (product?.sizeStock && typeof product.sizeStock === "object") {
+    return Object.values(product.sizeStock).reduce(
+      (sum, value) => sum + Number(value || 0),
+      0
+    );
+  }
+
+  if (product?.size_stock && typeof product.size_stock === "object") {
+    return Object.values(product.size_stock).reduce(
+      (sum, value) => sum + Number(value || 0),
+      0
+    );
+  }
+
+  return Number(product?.quantity || product?.stock || 0);
 };
 
 export default function ProductCard({ product }) {
   const imageUrl = getProductImage(product);
-
-  const stock = Number(product?.quantity || product?.stock || 0);
+  const stock = getTotalStock(product);
   const isOutOfStock = stock <= 0;
+
+  const oldPrice = Number(product?.oldPrice || product?.old_price || 0);
+  const price = Number(product?.price || 0);
+
+  const tags = Array.isArray(product?.tags)
+    ? product.tags
+    : String(product?.tags || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
 
   return (
     <article className="group overflow-hidden rounded-[2rem] border border-yellow-400/25 bg-black/50 shadow-2xl shadow-yellow-400/10 backdrop-blur-xl transition hover:-translate-y-1 hover:border-yellow-400/60">
@@ -62,9 +92,9 @@ export default function ProductCard({ product }) {
             </div>
           )}
 
-          {product?.tags?.length > 0 && (
+          {tags.length > 0 && (
             <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-              {product.tags.slice(0, 2).map((tag) => (
+              {tags.slice(0, 2).map((tag) => (
                 <span
                   key={tag}
                   className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-black uppercase text-black"
@@ -109,13 +139,12 @@ export default function ProductCard({ product }) {
           <div className="mt-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-2xl font-black text-yellow-400">
-                {Number(product.price || 0)} EGP
+                {price} EGP
               </p>
 
-              {Number(product.oldPrice || product.old_price || 0) >
-                Number(product.price || 0) && (
+              {oldPrice > price && (
                 <p className="text-sm font-bold text-zinc-500 line-through">
-                  {Number(product.oldPrice || product.old_price || 0)} EGP
+                  {oldPrice} EGP
                 </p>
               )}
             </div>

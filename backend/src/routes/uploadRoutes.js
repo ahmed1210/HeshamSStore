@@ -1,42 +1,14 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const supabase = require("../config/supabase");
 
 const router = express.Router();
 
-/*
-  This folder will be:
-  backend/uploads
-*/
-const uploadDir = path.join(__dirname, "../../uploads");
+const BUCKET_NAME = "product-images";
 
-/*
-  Create uploads folder automatically if it does not exist
-*/
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+const storage = multer.memoryStorage();
 
-/*
-  Save image inside backend/uploads
-*/
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-
-    cb(null, filename);
-  },
-});
-
-/*
-  Only allow images
-*/
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
@@ -51,15 +23,11 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 5 * 1024 * 1024,
   },
 });
 
-/*
-  POST /api/upload
-  FormData name must be: image
-*/
-router.post("/", upload.single("image"), (req, res) => {
+router.post("/", upload.single("image"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -67,26 +35,48 @@ router.post("/", upload.single("image"), (req, res) => {
       });
     }
 
-    const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    const ext = path.extname(req.file.originalname).toLowerCase() || ".jpg";
+    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const filePath = `products/${filename}`;
 
-    res.status(201).json({
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Supabase storage upload error:", uploadError);
+
+      return res.status(500).json({
+        message: "Failed to upload image to Supabase Storage",
+        error: uploadError.message,
+      });
+    }
+
+    const { data } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(filePath);
+
+    const imageUrl = data.publicUrl;
+
+    return res.status(201).json({
       message: "Image uploaded successfully",
       imageUrl,
       url: imageUrl,
-      filename: req.file.filename,
+      filename,
+      path: filePath,
     });
   } catch (error) {
     console.error("Upload route error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: error.message || "Failed to upload image",
     });
   }
 });
 
-/*
-  Multer error handler
-*/
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {
