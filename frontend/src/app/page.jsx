@@ -106,14 +106,19 @@ export default function HomePage() {
     return products.filter((product) => product.isActive !== false);
   }, [products]);
 
-  const heroProduct = useMemo(() => {
-    return (
-      activeProducts.find((product) => getImage(product) && getStock(product) > 0) ||
-      activeProducts.find((product) => getImage(product)) ||
-      activeProducts[0]
-    );
-  }, [activeProducts]);
-
+ const heroProduct = useMemo(() => {
+  return (
+    activeProducts.find(
+      (product) =>
+        getTags(product).includes("featured") &&
+        getImage(product) &&
+        getStock(product) > 0
+    ) ||
+    activeProducts.find((product) => getImage(product) && getStock(product) > 0) ||
+    activeProducts.find((product) => getImage(product)) ||
+    activeProducts[0]
+  );
+}, [activeProducts]);
   const heroImage = getImage(heroProduct);
 
   const newProducts = useMemo(() => {

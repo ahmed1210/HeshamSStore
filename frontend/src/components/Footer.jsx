@@ -119,7 +119,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 border-t border-white/10 pt-6 text-sm text-zinc-500">
-          © {new Date().getFullYear()} {storeName}. All rights reserved.
+          © {new Date().getFullYear()} {storeName}. powered by zahran...
         </div>
       </div>
     </footer>
