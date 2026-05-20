@@ -1,4 +1,3 @@
-
 export default function DeliveryPolicyPage() {
   return (
     <main className="min-h-screen py-20 text-white">
@@ -14,7 +13,8 @@ export default function DeliveryPolicyPage() {
 
           <div className="mt-8 space-y-5 text-zinc-300">
             <p>
-              We deliver orders to available delivery areas shown during checkout.
+              We deliver orders to the available delivery areas shown during
+              checkout.
             </p>
 
             <p>
