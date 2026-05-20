@@ -152,7 +152,7 @@ export default function Navbar() {
             >
               <Search size={17} className="text-yellow-400" />
               <span className="text-sm font-bold text-zinc-500">
-                Search products, brands, categories...
+                Search.....
               </span>
             </button>
           </div>
