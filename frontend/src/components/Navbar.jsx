@@ -151,9 +151,7 @@ export default function Navbar() {
               className="flex h-12 w-full max-w-md items-center gap-3 rounded-2xl border border-yellow-400/20 bg-white/5 px-4 text-left transition hover:border-yellow-400/50"
             >
               <Search size={17} className="text-yellow-400" />
-              <span className="text-sm font-bold text-zinc-500">
-                Search.....
-              </span>
+              <span className="text-sm font-bold text-zinc-500">Search...</span>
             </button>
           </div>
 
@@ -210,7 +208,7 @@ export default function Navbar() {
       />
 
       <aside
-        className={`fixed bottom-0 right-0 top-0 z-[90] w-[88vw] max-w-sm border-l border-yellow-400/20 bg-[#050505] p-6 text-white shadow-2xl transition duration-500 xl:hidden ${
+        className={`fixed bottom-0 right-0 top-0 z-[90] w-[88vw] max-w-sm overflow-y-auto border-l border-yellow-400/20 bg-[#050505] p-6 text-white shadow-2xl transition duration-500 xl:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -301,7 +299,7 @@ export default function Navbar() {
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      <div className="h-[114px]" />
+      <div className="h-[114px] bg-black" />
     </>
   );
 }
