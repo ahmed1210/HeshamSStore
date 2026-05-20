@@ -1,48 +1,127 @@
 const bcrypt = require("bcryptjs");
+const supabase = require("../config/supabase");
 
-let storeSettings = {
-  storeName: "Hesham Store",
-  logoText: "Hesham Store",
-  logoImage: "",
-  whatsappLink: "",
-  instagramLink: "",
-  facebookLink: "",
-  homepageTitle: "Step Into Style",
-  homepageSubtitle: "Discover modern shoes for men, women, and kids.",
+const defaultSettings = {
+  store_name: "Hesham Store",
+  description: "Modern shoes store for men, women, and kids.",
+  logo_url: "",
+  phone: "",
+  email: "",
+  address: "",
+  instagram_url: "",
+  facebook_url: "",
+  telegram_url: "",
+
+  location_1_name: "",
+  location_1_address: "",
+  location_1_map_url: "",
+  location_2_name: "",
+  location_2_address: "",
+  location_2_map_url: "",
+  location_3_name: "",
+  location_3_address: "",
+  location_3_map_url: "",
+  location_4_name: "",
+  location_4_address: "",
+  location_4_map_url: "",
+  location_5_name: "",
+  location_5_address: "",
+  location_5_map_url: "",
 };
 
-const getPublicSettings = (req, res) => {
-  res.json(storeSettings);
-};
+const settingKeys = Object.keys(defaultSettings);
 
-const updateStoreSettings = (req, res) => {
-  const {
-    storeName,
-    logoText,
-    logoImage,
-    whatsappLink,
-    instagramLink,
-    facebookLink,
-    homepageTitle,
-    homepageSubtitle,
-  } = req.body;
+const normalizeSettings = (body) => {
+  const payload = {};
 
-  storeSettings = {
-    ...storeSettings,
-    storeName: storeName ?? storeSettings.storeName,
-    logoText: logoText ?? storeSettings.logoText,
-    logoImage: logoImage ?? storeSettings.logoImage,
-    whatsappLink: whatsappLink ?? storeSettings.whatsappLink,
-    instagramLink: instagramLink ?? storeSettings.instagramLink,
-    facebookLink: facebookLink ?? storeSettings.facebookLink,
-    homepageTitle: homepageTitle ?? storeSettings.homepageTitle,
-    homepageSubtitle: homepageSubtitle ?? storeSettings.homepageSubtitle,
-  };
-
-  res.json({
-    message: "Store settings updated successfully",
-    settings: storeSettings,
+  settingKeys.forEach((key) => {
+    if (body[key] !== undefined) {
+      payload[key] = body[key] === null ? "" : String(body[key]);
+    }
   });
+
+  payload.updated_at = new Date().toISOString();
+
+  return payload;
+};
+
+const getPublicSettings = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("store_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return res.json({
+      ...defaultSettings,
+      ...(data || {}),
+    });
+  } catch (error) {
+    console.error("Get settings error:", error);
+
+    return res.status(500).json({
+      message: "Failed to load settings",
+      error: error.message,
+    });
+  }
+};
+
+const updateStoreSettings = async (req, res) => {
+  try {
+    const payload = normalizeSettings(req.body);
+
+    const { data: existing, error: findError } = await supabase
+      .from("store_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    let result;
+    let error;
+
+    if (existing?.id) {
+      const updateResult = await supabase
+        .from("store_settings")
+        .update(payload)
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+
+      result = updateResult.data;
+      error = updateResult.error;
+    } else {
+      const insertResult = await supabase
+        .from("store_settings")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      result = insertResult.data;
+      error = insertResult.error;
+    }
+
+    if (error) throw error;
+
+    return res.json({
+      message: "Store settings updated successfully",
+      settings: {
+        ...defaultSettings,
+        ...(result || {}),
+      },
+    });
+  } catch (error) {
+    console.error("Update settings error:", error);
+
+    return res.status(500).json({
+      message: "Could not update store settings",
+      error: error.message,
+    });
+  }
 };
 
 const changeAdminPassword = async (req, res) => {
@@ -87,15 +166,14 @@ const changeAdminPassword = async (req, res) => {
     }
 
     const newPasswordHash = await bcrypt.hash(String(newPassword), 10);
-
     process.env.ADMIN_PASSWORD_HASH = newPasswordHash;
 
-    res.json({
+    return res.json({
       message:
         "Admin password changed successfully. Use the new password next login.",
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Could not change admin password",
     });
   }

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
@@ -12,6 +13,7 @@ export default function AppShell({ children }) {
     <>
       {!isAdminPage && <Navbar />}
       {children}
+      {!isAdminPage && <Footer />}
     </>
   );
 }

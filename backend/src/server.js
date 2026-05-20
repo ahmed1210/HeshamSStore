@@ -14,6 +14,8 @@ const deliveryRoutes = require("./routes/deliveryRoutes");
 const paymobRoutes = require("./routes/paymobRoutes");
 const discountRoutes = require("./routes/discountRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
+const brandRoutes = require("./routes/brandRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
 
 const app = express();
 
@@ -88,6 +90,10 @@ app.use("/api/delivery", deliveryRoutes);
 app.use("/api/paymob", paymobRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/admin/discounts", discountRoutes);
+app.use("/api/brands", brandRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/admin/brands", brandRoutes);
+app.use("/api/admin/categories", categoryRoutes);
 
 // 404 route
 app.use((req, res) => {

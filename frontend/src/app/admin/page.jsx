@@ -7,10 +7,7 @@ import {
   BadgePercent,
   BarChart3,
   Boxes,
-  Building2,
-  Car,
   ClipboardList,
-  DollarSign,
   FolderTree,
   LayoutDashboard,
   Package,
@@ -52,14 +49,14 @@ const adminCards = [
   },
   {
     title: "Categories",
-    description: "Manage store categories shown in filters and products.",
+    description: "Manage category names, slugs, images, and homepage sections.",
     href: "/admin/categories",
     permission: "categories",
     icon: FolderTree,
   },
   {
     title: "Brands",
-    description: "Manage product brands and filtering options.",
+    description: "Manage brand names, logo URLs, and homepage logo cards.",
     href: "/admin/brands",
     permission: "brands",
     icon: Tags,
@@ -87,7 +84,7 @@ const adminCards = [
   },
   {
     title: "Store Settings",
-    description: "Edit logo, store name, homepage links, and social links.",
+    description: "Edit store name, contact, locations, social links, and logo.",
     href: "/admin/settings",
     permission: "settings",
     icon: Settings,
@@ -204,8 +201,8 @@ export default function AdminDashboardPage() {
             </h1>
 
             <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-zinc-300 md:text-base">
-              Manage products, orders, stock, delivery, discounts, users, and
-              store settings from one clean dashboard.
+              Manage products, brands, categories, orders, stock, delivery,
+              discounts, users, and store settings from one clean dashboard.
             </p>
           </div>
 
@@ -303,8 +300,8 @@ export default function AdminDashboardPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-zinc-400">
-              Products are now connected to Supabase. Orders are ready for
-              testing from checkout and should appear inside the orders table.
+              Products, brands, categories, settings, and orders are connected
+              to Supabase for testing and demo.
             </p>
           </div>
 
